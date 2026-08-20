@@ -1,7 +1,88 @@
-<!DOCTYPE html>  
-<html>  
-<head>  
-  <meta name="monetag" content="28b02dc2f0bf0d606b9d801798cff6c5">  
-</head>  
-<body>OK</body>  
-</html>  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #121212; color: #fff; }
+        .container { max-width: 400px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        button { background: #0088cc; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .error { color: #ff5555; }
+        .complete { color: #55ff55; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Ad Verification</h2>
+        <p id="status">Please wait for the timer to finish...</p>
+        <h1 id="countdown">10</h1>
+        <button id="continueBtn" disabled>Continue to Telegram</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get("user_id");
+        const jobId = urlParams.get("job_id");
+
+        const statusEl = document.getElementById("status");
+        const countdownEl = document.getElementById("countdown");
+        const continueBtn = document.getElementById("continueBtn");
+
+        let timeLeft = 10;
+        let adComplete = false;
+
+        const countdownTimer = setInterval(() => {
+            timeLeft--;
+            countdownEl.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(countdownTimer);
+                statusEl.textContent = "Timer finished! Click below to verify.";
+                continueBtn.disabled = false;
+            }
+        }, 1000);
+
+        continueBtn.addEventListener("click", async () => {
+            continueBtn.disabled = true;
+            statusEl.textContent = "Verifying...";
+
+            try {
+                // ⚠️ REPLACE THIS URL WITH YOUR ACTUAL RENDER BACKEND URL
+                const response = await fetch("https://your-backend-service.onrender.com/verify_ad", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId, job_id: jobId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    adComplete = true;
+                    statusEl.textContent = "✅ Verified! Redirecting to Telegram...";
+                    statusEl.classList.add("complete");
+                    setTimeout(() => {
+                        window.location.href = `https://t.me/tiktok_etbot?start=ad_verified_${jobId}`;
+                    }, 2000);
+                } else {
+                    statusEl.textContent = "❌ Verification failed. Please try again.";
+                    statusEl.classList.add("error");
+                    continueBtn.disabled = false;
+                }
+            } catch (error) {
+                statusEl.textContent = "❌ Network error. Please try again.";
+                statusEl.classList.add("error");
+                continueBtn.disabled = false;
+            }
+        });
+
+        if (!userId || !jobId) {
+            statusEl.textContent = "⚠️ Missing parameters. Please go back to bot.";
+            statusEl.classList.add("error");
+            countdownEl.innerText = "❌";
+            clearInterval(countdownTimer);
+            continueBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>
